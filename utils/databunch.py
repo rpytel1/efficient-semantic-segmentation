@@ -2,6 +2,7 @@ from fastai import *
 from fastai.vision import *
 import os
 from glob import glob
+from functools import partial
 
 Label = namedtuple('Label', [
 
@@ -86,7 +87,7 @@ def get_classes():
     return classes
 
 
-def get_mask(x, masks):
+def get_mask(masks, x):
     for img in masks:
         if {Path(img).stem} == {x.stem}:
             return Path(img)
@@ -100,15 +101,17 @@ def get_databunch(base_dir, tfms=get_transforms(), size=None, bs=8):
     masks = glob(base_dir + "/gtFine/*/*")
 
     img = Path(images[0])
-    mask = open_mask(get_mask(img, masks))
+    mask = open_mask(get_mask(masks, img))
 
     if size is None:
         src_size = np.array(mask.shape[1:])
         size = src_size // 2
-
+    
+    _get_mask = partial(get_mask, masks)
+    
     src = (SegmentationItemList.from_folder(image_path)
            .split_by_folder(train='train', valid='val')
-           .label_from_func(get_mask, classes=classes))
+           .label_from_func(_get_mask, classes=classes))
 
     data = (src.transform(tfms, size=size // 4, tfm_y=True)
             .databunch(bs=bs)
