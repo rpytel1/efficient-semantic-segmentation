@@ -113,7 +113,7 @@ def get_databunch(base_dir, tfms=get_transforms(), size=None, bs=8):
            .split_by_folder(train='train', valid='val')
            .label_from_func(_get_mask, classes=classes))
 
-    data = (src.transform(tfms, size=size // 4, tfm_y=True)
+    data = (src.transform(tfms, size=size, tfm_y=True)
             .databunch(bs=bs)
             .normalize(imagenet_stats))
 
