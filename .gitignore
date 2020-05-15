@@ -208,4 +208,7 @@ dmypy.json
 .pyre/
 
 data/
+results/
+results.json
+results.txt
 # End of https://www.gitignore.io/api/python,pycharm+all,jupyternotebooks

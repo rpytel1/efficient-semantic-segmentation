@@ -28,6 +28,13 @@ for gfolder in ['gtFine','leftImg8bit']:
                     what = os.path.join(dir,d,f)
                     to = os.path.join(dir)
                     shutil.move(what, to)
+                    
+    for folder in ['train', 'val','test']:
+        dir = os.path.join("data/cityspaces/", gfolder, folder)
+        files =  files = os.listdir(dir)
+        for f in files:
+            if f.endswith("_gtFine_color.png") or f.endswith("_instanceIds.png") or f.endswith("gtFine_polygons.json"):
+                os.remove(os.path.join(dir,f))
 
 sanitize_data("data/minicity")
 sanitize_data("data/cityspaces")
