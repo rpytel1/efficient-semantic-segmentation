@@ -93,7 +93,7 @@ def get_mask(masks, x):
             return Path(img)
 
 
-def get_databunch(base_dir, tfms=get_transforms(), size=None, bs=8):
+def get_databunch(base_dir, tfms=get_transforms(max_rotate=0), size=None, bs=8):
     classes = get_classes()
 
     image_path = Path(base_dir + "/leftImg8bit/")
