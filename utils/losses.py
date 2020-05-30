@@ -15,6 +15,18 @@ except ImportError: # py3k
     from itertools import  filterfalse as ifilterfalse
 
 
+def get_class_weights():
+    weights = []
+    with open('utils/weights.txt', 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        weights.append(int(line))
+
+    return torch.FloatTensor(weights).cuda()
+
+weights = get_class_weights()
+
+
 def lovasz_grad(gt_sorted):
     """
     Computes gradient of the Lovasz extension w.r.t sorted errors
@@ -106,6 +118,13 @@ def xloss(logits, labels, ignore=None):
     return F.cross_entropy(logits, Variable(labels), ignore_index=255)
 
 
+def weighted_xloss(logits, labels, ignore=None):
+    """
+    Weighted cross entropy loss
+    """
+
+    return F.cross_entropy(logits, Variable(labels), weight=weights, ignore_index=255)
+
 # --------------------------- HELPER FUNCTIONS ---------------------------
 def isnan(x):
     return x != x
@@ -166,6 +185,7 @@ def dice_loss(logits, true, eps=1e-7):
     cardinality = torch.sum(probas + true_1_hot, dims)
     dice_loss = (2. * intersection / (cardinality + eps)).mean()
     return (1 - dice_loss)
+
 
 
 
