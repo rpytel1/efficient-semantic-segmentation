@@ -1,4 +1,0 @@
-[submodule "toolkit"]
-	path = toolkit
-	url = https://github.com/rpytel1/vipriors-challenges-toolkit.git
-	branch = master
