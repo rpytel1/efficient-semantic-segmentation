@@ -25,6 +25,8 @@ from PIL import Image
 from helpers.model import UNet
 from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
+from semi_supervised.cutmix import apply_cutmix
+
 
 parser = argparse.ArgumentParser(description='VIPriors Segmentation baseline training script')
 parser.add_argument('--dataset_path', metavar='path/to/minicity/root', default='./minicity',
@@ -71,6 +73,15 @@ parser.add_argument('--dataset_std', metavar='[0.229, 0.224, 0.225]',
 parser.add_argument('--predict', metavar='path/to/weights',
                     default=None, type=str,
                     help='provide path to model weights to predict on validation set')
+
+parser.add_argument('--cutmix_prob', metavar='0',
+                    default=0, type=float,
+                    help='probability of applying cutmix')
+
+parser.add_argument('--beta', metavar='0',
+                    default=0, type=float,
+                    help='beta_probability')
+
 
 """
 ===========
@@ -288,7 +299,11 @@ def train_epoch(dataloader, model, criterion, optimizer, lr_scheduler, epoch, vo
             
             # zero the parameter gradients
             optimizer.zero_grad()
-        
+            
+            r = random.random()
+            if args.beta > 0 and r < args.cutmix_prob:
+                inputs, labels = apply_cutmix(inputs, labels, args.beta)
+                
             # forward pass
             outputs = model(inputs)
             preds = torch.argmax(outputs, 1)
