@@ -22,7 +22,9 @@ import warnings
 import random
 from PIL import Image
 
-from helpers.model import UNet
+from models.UNet.unet_baseline import UNet
+from models.Tiramisu.tiramisu import FCDenseNet
+from models.FastFCN.FastFCN import FCN
 from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix
@@ -88,6 +90,9 @@ parser.add_argument('--loss', metavar='cel',
                     default="cel", type=str,
                     help='type of loss')
 
+parser.add_argument('--model', metavar='model', default='unet',
+                    type=str, help='Model: unet(default), tiramisu or fastfcn')
+
 """
 ===========
 Main method
@@ -137,7 +142,13 @@ def main():
                                                       pin_memory=args.pin_memory, num_workers=args.num_workers)
 
     # Load model
-    model = UNet(len(MiniCity.validClasses), batchnorm=True)
+    model = None
+    if args.model == 'unet':
+        model = UNet(len(MiniCity.validClasses), batchnorm=True)
+    elif args.model == 'tiramisu':
+        model = FCDenseNet(len(MiniCity.validClasses))
+    elif args.model == 'fastfcn':
+        model = FCN(len(MiniCity.validClasses), backbone='resnet50')
 
     # Define loss, optimizer and scheduler
     criterion = nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass)
