@@ -14,7 +14,7 @@ import torchvision.transforms.functional as TF
 
 import time
 import os
-import cv2
+# import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
@@ -28,6 +28,7 @@ from models.FastFCN.FastFCN import FCN
 from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix
+from semi_supervised.cowmix import apply_cowmix
 from utils.dice_loss import DiceLoss
 from utils.losses import get_class_weights
 from utils.lovasz_loss import LovaszLoss
@@ -85,6 +86,10 @@ parser.add_argument('--cutmix_prob', metavar='0',
 parser.add_argument('--beta', metavar='0',
                     default=0, type=float,
                     help='beta_probability')
+
+parser.add_argument('--cowmix_prob', metavar='0',
+                    default=0, type=float,
+                    help='Fraction of pixels to cut for cowmix.')
 
 parser.add_argument('--loss', metavar='cel',
                     default="cel", type=str,
@@ -336,6 +341,9 @@ def train_epoch(dataloader, model, criterion, optimizer, lr_scheduler, epoch, vo
             if args.beta > 0 and r < args.cutmix_prob:
                 inputs, labels = apply_cutmix(inputs, labels, args.beta)
 
+            if args.cowmix_prob > 0:
+                inputs, labels = apply_cowmix(inputs, labels, args.cowmix_prob)
+
             # forward pass
             outputs = model(inputs)
             preds = torch.argmax(outputs, 1)
@@ -409,21 +417,21 @@ def validate_epoch(dataloader, model, criterion, epoch, classLabels, validClasse
             iou.evaluateBatch(preds, labels)
 
             # Save visualizations of first batch
-            if epoch_step == 0 and maskColors is not None:
-                for i in range(inputs.size(0)):
-                    filename = os.path.splitext(os.path.basename(filepath[i]))[0]
-                    # Only save inputs and labels once
-                    if epoch == 0:
-                        img = visim(inputs[i, :, :, :])
-                        label = vislbl(labels[i, :, :], maskColors)
-                        if len(img.shape) == 3:
-                            cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img[:, :, ::-1])
-                        else:
-                            cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img)
-                        cv2.imwrite('{}/images/{}_gt.png'.format(args.output_dir, filename), label[:, :, ::-1])
-                    # Save predictions
-                    pred = vislbl(preds[i, :, :], maskColors)
-                    cv2.imwrite('{}/images/{}_epoch_{}.png'.format(args.output_dir, filename, epoch), pred[:, :, ::-1])
+            # if epoch_step == 0 and maskColors is not None:
+            #     for i in range(inputs.size(0)):
+            #         filename = os.path.splitext(os.path.basename(filepath[i]))[0]
+            #         # Only save inputs and labels once
+            #         if epoch == 0:
+            #             img = visim(inputs[i, :, :, :])
+            #             label = vislbl(labels[i, :, :], maskColors)
+            #             if len(img.shape) == 3:
+            #                 cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img[:, :, ::-1])
+            #             else:
+            #                 cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img)
+            #             cv2.imwrite('{}/images/{}_gt.png'.format(args.output_dir, filename), label[:, :, ::-1])
+            #         # Save predictions
+            #         pred = vislbl(preds[i, :, :], maskColors)
+            #         cv2.imwrite('{}/images/{}_epoch_{}.png'.format(args.output_dir, filename, epoch), pred[:, :, ::-1])
 
             # measure elapsed time
             batch_time.update(time.time() - end)
