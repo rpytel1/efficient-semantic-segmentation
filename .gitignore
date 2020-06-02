@@ -211,4 +211,5 @@ data/
 results/
 results.json
 results.txt
+baseline_run/
 # End of https://www.gitignore.io/api/python,pycharm+all,jupyternotebooks

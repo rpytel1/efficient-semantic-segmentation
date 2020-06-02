@@ -1,15 +1,16 @@
 from __future__ import division
 
+import torch.nn as nn
+
 from torch.nn.functional import interpolate
 
 from .FastFCN_parts import FCNHead, JPU
-from utils.databunch import *
-
+from ..DilatedResNet import ResNet
 
 class BaseNet(nn.Module):
     def __init__(self, n_classes, backbone, aux, se_loss, jpu=True, dilated=False, norm_layer=None,
                  base_size=520, crop_size=480, mean=[.485, .456, .406],
-                 std=[.229, .224, .225], root='~/.encoding/models', **kwargs):
+                 std=[.229, .224, .225], **kwargs):
         super(BaseNet, self).__init__()
         self.n_classes = n_classes
         self.aux = aux
@@ -20,11 +21,11 @@ class BaseNet(nn.Module):
         self.crop_size = crop_size
         # copying modules from pretrained models
         if backbone == 'resnet50':
-            self.pretrained = models.resnet50(pretrained=False)
+            self.pretrained = ResNet.resnet50(dilated=dilated)
         elif backbone == 'resnet101':
-            self.pretrained = models.resnet101(pretrained=False)
+            self.pretrained = ResNet.resnet101(dilated=dilated)
         elif backbone == 'resnet152':
-            self.pretrained = models.resnet152(pretrained=False)
+            self.pretrained = ResNet.resnet152(dilated=dilated)
         else:
             raise RuntimeError('unknown backbone: {}'.format(backbone))
         # bilinear upsample options
@@ -64,9 +65,9 @@ class FCN(BaseNet):
 
         x = self.head(c4)
         x = interpolate(x, imsize)
-        outputs = [x]
+        output = x
         if self.aux:
             auxout = self.auxlayer(c3)
             auxout = interpolate(auxout, imsize)
-            outputs.append(auxout)
-        return outputs
+            output = auxout
+        return output
