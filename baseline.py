@@ -28,6 +28,7 @@ from models.FastFCN.FastFCN import FCN
 from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix
+from semi_supervised.cowmix import apply_cowmix
 from utils.dice_loss import DiceLoss
 from utils.losses import get_class_weights
 from utils.lovasz_loss import LovaszLoss
@@ -85,6 +86,10 @@ parser.add_argument('--cutmix_prob', metavar='0',
 parser.add_argument('--beta', metavar='0',
                     default=0, type=float,
                     help='beta_probability')
+
+parser.add_argument('--cowmix_prob', metavar='0',
+                    default=0, type=float,
+                    help='Fraction of pixels to cut for cowmix.')
 
 parser.add_argument('--loss', metavar='cel',
                     default="cel", type=str,
@@ -335,6 +340,9 @@ def train_epoch(dataloader, model, criterion, optimizer, lr_scheduler, epoch, vo
             r = random.random()
             if args.beta > 0 and r < args.cutmix_prob:
                 inputs, labels = apply_cutmix(inputs, labels, args.beta)
+
+            if args.cowmix_prob > 0:
+                inputs, labels = apply_cowmix(inputs, labels, args.cowmix_prob)
 
             # forward pass
             outputs = model(inputs)
