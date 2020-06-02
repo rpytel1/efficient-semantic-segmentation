@@ -88,6 +88,10 @@ parser.add_argument('--loss', metavar='cel',
                     default="cel", type=str,
                     help='type of loss')
 
+parser.add_argument('--output_dir', metavar='baseline_run',
+                    default="baseline_run", type=str,
+                    help='output dir')
+
 """
 ===========
 Main method
@@ -117,9 +121,9 @@ def main():
         'Crop size must be <= image size.'
 
     # Create directory to store run files
-    if not os.path.isdir('baseline_run'):
-        os.makedirs('baseline_run/images')
-        os.makedirs('baseline_run/results_color')
+    if not os.path.isdir(args.output_dir):
+        os.makedirs(args.output_dir + '/images')
+        os.makedirs(args.output_dir + '/results_color')
 
     # Load dataset
     trainset = MiniCity(args.dataset_path, split='train', transforms=train_trans)
@@ -146,7 +150,7 @@ def main():
     elif args.loss == "dice":
         criterion = DiceLoss()
     elif args.loss == "weighted":
-    # TODO: Need fixing as indexes changed
+        # TODO: Need fixing as indexes changed
         criterion = nn.CrossEntropyLoss(weight=get_class_weights(), ignore_index=MiniCity.voidClass)
 
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr_init,
@@ -191,7 +195,7 @@ def main():
         return
 
     # Generate log file
-    with open('baseline_run/log_epoch.csv', 'a') as epoch_log:
+    with open(args.output_dir + '/log_epoch.csv', 'a') as epoch_log:
         epoch_log.write('epoch, train loss, val loss, train acc, val acc, miou\n')
 
     since = time.time()
@@ -221,7 +225,7 @@ def main():
         metrics['miou'].append(miou)
 
         # Write logs
-        with open('baseline_run/log_epoch.csv', 'a') as epoch_log:
+        with open(args.output_dir + '/log_epoch.csv', 'a') as epoch_log:
             epoch_log.write('{}, {:.5f}, {:.5f}, {:.5f}, {:.5f}, {:.5f}\n'.format(
                 epoch, train_loss, val_loss, train_acc, val_acc, miou))
 
@@ -232,7 +236,7 @@ def main():
             'optimizer_state_dict': optimizer.state_dict(),
             'best_miou': best_miou,
             'metrics': metrics,
-        }, 'baseline_run/checkpoint.pth.tar')
+        }, args.output_dir + '/checkpoint.pth.tar')
 
         # Save best model to file
         if miou > best_miou:
@@ -241,7 +245,7 @@ def main():
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
-            }, 'baseline_run/best_weights.pth.tar')
+            }, args.output_dir + '/best_weights.pth.tar')
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
@@ -263,12 +267,13 @@ def main():
     lns = ln1 + ln2 + ln3 + ln4 + ln5
     plt.legend(lns, ['Train loss', 'Validation loss', 'Train accuracy', 'Validation accuracy', 'mIoU'])
     plt.tight_layout()
-    plt.savefig('baseline_run/learning_curve.pdf', bbox_inches='tight')
+    plt.savefig(args.output_dir + '/learning_curve.pdf', bbox_inches='tight')
 
     # Load best model
-    checkpoint = torch.load('baseline_run/best_weights.pth.tar')
+    checkpoint = torch.load(args.output_dir + '/best_weights.pth.tar')
     model.load_state_dict(checkpoint['model_state_dict'], strict=True)
-    print('Loaded best model weights (epoch {}) from baseline_run/best_weights.pth.tar'.format(checkpoint['epoch']))
+    print('Loaded best model weights (epoch {}) from {}/best_weights.pth.tar'.format(checkpoint['epoch'],
+                                                                                     args.output_dir))
     # Create results directory
     if not os.path.isdir('results'):
         os.makedirs('results')
@@ -401,13 +406,13 @@ def validate_epoch(dataloader, model, criterion, epoch, classLabels, validClasse
                         img = visim(inputs[i, :, :, :])
                         label = vislbl(labels[i, :, :], maskColors)
                         if len(img.shape) == 3:
-                            cv2.imwrite('baseline_run/images/{}.png'.format(filename), img[:, :, ::-1])
+                            cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img[:, :, ::-1])
                         else:
-                            cv2.imwrite('baseline_run/images/{}.png'.format(filename), img)
-                        cv2.imwrite('baseline_run/images/{}_gt.png'.format(filename), label[:, :, ::-1])
+                            cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img)
+                        cv2.imwrite('{}/images/{}_gt.png'.format(args.output_dir, filename), label[:, :, ::-1])
                     # Save predictions
                     pred = vislbl(preds[i, :, :], maskColors)
-                    cv2.imwrite('baseline_run/images/{}_epoch_{}.png'.format(filename, epoch), pred[:, :, ::-1])
+                    cv2.imwrite('{}/images/{}_epoch_{}.png'.format(args.output_dir, filename, epoch), pred[:, :, ::-1])
 
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -457,12 +462,12 @@ def predict(dataloader, model, maskColors):
                 # Save input
                 img = visim(inputs[i, :, :, :])
                 img = Image.fromarray(img, 'RGB')
-                img.save('baseline_run/results_color/{}_input.png'.format(filename))
+                img.save('{}/results_color/{}_input.png'.format(args.output_dir, filename))
                 # Save prediction with color labels
                 pred = preds[i, :, :].cpu()
                 pred_color = vislbl(pred, maskColors)
                 pred_color = Image.fromarray(pred_color.astype('uint8'))
-                pred_color.save('baseline_run/results_color/{}_prediction.png'.format(filename))
+                pred_color.save('{}/results_color/{}_prediction.png'.format(args.output_dir, filename))
                 # Save class id prediction (used for evaluation)
                 pred_id = MiniCity.trainid2id[pred]
                 pred_id = Image.fromarray(pred_id)
