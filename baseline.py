@@ -14,7 +14,7 @@ import torchvision.transforms.functional as TF
 
 import time
 import os
-# import cv2
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
@@ -102,6 +102,10 @@ parser.add_argument('--output_dir', metavar='baseline_run',
                     default="baseline_run", type=str,
                     help='output dir')
 
+parser.add_argument('--window', metavar='window_function',
+                    default='', type=str,
+                    help='Windowing function [hamming, blackman, kaiser].')
+
 """
 ===========
 Main method
@@ -153,7 +157,7 @@ def main():
     # Load model
     model = None
     if args.model == 'unet':
-        model = UNet(len(MiniCity.validClasses), batchnorm=True)
+        model = UNet(len(MiniCity.validClasses), batchnorm=True, window=args.window)
     elif args.model == 'tiramisu':
         model = FCDenseNet(len(MiniCity.validClasses))
     elif args.model == 'fastfcn':
@@ -417,21 +421,21 @@ def validate_epoch(dataloader, model, criterion, epoch, classLabels, validClasse
             iou.evaluateBatch(preds, labels)
 
             # Save visualizations of first batch
-            # if epoch_step == 0 and maskColors is not None:
-            #     for i in range(inputs.size(0)):
-            #         filename = os.path.splitext(os.path.basename(filepath[i]))[0]
-            #         # Only save inputs and labels once
-            #         if epoch == 0:
-            #             img = visim(inputs[i, :, :, :])
-            #             label = vislbl(labels[i, :, :], maskColors)
-            #             if len(img.shape) == 3:
-            #                 cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img[:, :, ::-1])
-            #             else:
-            #                 cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img)
-            #             cv2.imwrite('{}/images/{}_gt.png'.format(args.output_dir, filename), label[:, :, ::-1])
-            #         # Save predictions
-            #         pred = vislbl(preds[i, :, :], maskColors)
-            #         cv2.imwrite('{}/images/{}_epoch_{}.png'.format(args.output_dir, filename, epoch), pred[:, :, ::-1])
+            if epoch_step == 0 and maskColors is not None:
+                for i in range(inputs.size(0)):
+                    filename = os.path.splitext(os.path.basename(filepath[i]))[0]
+                    # Only save inputs and labels once
+                    if epoch == 0:
+                        img = visim(inputs[i, :, :, :])
+                        label = vislbl(labels[i, :, :], maskColors)
+                        if len(img.shape) == 3:
+                            cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img[:, :, ::-1])
+                        else:
+                            cv2.imwrite('{}/images/{}.png'.format(args.output_dir, filename), img)
+                        cv2.imwrite('{}/images/{}_gt.png'.format(args.output_dir, filename), label[:, :, ::-1])
+                    # Save predictions
+                    pred = vislbl(preds[i, :, :], maskColors)
+                    cv2.imwrite('{}/images/{}_epoch_{}.png'.format(args.output_dir, filename, epoch), pred[:, :, ::-1])
 
             # measure elapsed time
             batch_time.update(time.time() - end)
