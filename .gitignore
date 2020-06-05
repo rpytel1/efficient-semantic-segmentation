@@ -212,4 +212,10 @@ results/
 results.json
 results.txt
 baseline_run/
+*.pdf
+*.csv
+*.png
+*.tar
+*.out
+*.sh
 # End of https://www.gitignore.io/api/python,pycharm+all,jupyternotebooks
