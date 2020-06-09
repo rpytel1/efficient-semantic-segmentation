@@ -39,9 +39,9 @@ class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch, bn, w=''):
         super(double_conv, self).__init__()
         if w:
-            first_conv = Conv2d_window(in_ch, out_ch, 7, padding=3, window=w),
+            first_conv = Conv2d_window(in_ch, out_ch, 7, padding=3, window=w)
         else:
-            first_conv = nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            first_conv = nn.Conv2d(in_ch, out_ch, 3, padding=1)
 
         if bn:
             self.conv = nn.Sequential(
