@@ -2,11 +2,13 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
+from windowing.window_conv import Conv2d_window
+
 
 class UNet(nn.Module):
-    def __init__(self, n_classes, batchnorm=False):
+    def __init__(self, n_classes, batchnorm=False, window=''):
         super(UNet, self).__init__()
-        self.inc = inconv(3, 64, batchnorm)
+        self.inc = inconv(3, 64, batchnorm, window)
         self.down1 = down(64, 128, batchnorm)
         self.down2 = down(128, 256, batchnorm)
         self.down3 = down(256, 512, batchnorm)
@@ -34,11 +36,16 @@ class UNet(nn.Module):
 class double_conv(nn.Module):
     '''(conv => BN => ReLU) * 2'''
 
-    def __init__(self, in_ch, out_ch, bn):
+    def __init__(self, in_ch, out_ch, bn, w=''):
         super(double_conv, self).__init__()
+        if w:
+            first_conv = Conv2d_window(in_ch, out_ch, 7, padding=3, window=w),
+        else:
+            first_conv = nn.Conv2d(in_ch, out_ch, 3, padding=1),
+
         if bn:
             self.conv = nn.Sequential(
-                nn.Conv2d(in_ch, out_ch, 3, padding=1),
+                first_conv,
                 nn.BatchNorm2d(out_ch),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(out_ch, out_ch, 3, padding=1),
@@ -47,7 +54,7 @@ class double_conv(nn.Module):
             )
         else:
             self.conv = nn.Sequential(
-                nn.Conv2d(in_ch, out_ch, 3, padding=1),
+                first_conv,
                 nn.ReLU(inplace=True),
                 nn.Conv2d(out_ch, out_ch, 3, padding=1),
                 nn.ReLU(inplace=True)
@@ -59,9 +66,9 @@ class double_conv(nn.Module):
 
 
 class inconv(nn.Module):
-    def __init__(self, in_ch, out_ch, bn):
+    def __init__(self, in_ch, out_ch, bn, w):
         super(inconv, self).__init__()
-        self.conv = double_conv(in_ch, out_ch, bn)
+        self.conv = double_conv(in_ch, out_ch, bn, w)
 
     def forward(self, x):
         x = self.conv(x)

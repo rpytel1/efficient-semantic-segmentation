@@ -102,6 +102,10 @@ parser.add_argument('--output_dir', metavar='baseline_run',
                     default="baseline_run", type=str,
                     help='output dir')
 
+parser.add_argument('--window', metavar='window_function',
+                    default='', type=str,
+                    help='Windowing function [hamming, blackman, kaiser].')
+
 """
 ===========
 Main method
@@ -153,7 +157,7 @@ def main():
     # Load model
     model = None
     if args.model == 'unet':
-        model = UNet(len(MiniCity.validClasses), batchnorm=True)
+        model = UNet(len(MiniCity.validClasses), batchnorm=True, window=args.window)
     elif args.model == 'tiramisu':
         model = FCDenseNet(len(MiniCity.validClasses))
     elif args.model == 'fastfcn':
