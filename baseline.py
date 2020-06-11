@@ -25,6 +25,8 @@ from PIL import Image
 from models.UNet.unet_baseline import UNet
 from models.Tiramisu.tiramisu import FCDenseNet
 from models.FastFCN.FastFCN import FCN
+from models.LinkNet.linknet import LinkNet34
+
 from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix
@@ -162,6 +164,8 @@ def main():
         model = FCDenseNet(len(MiniCity.validClasses))
     elif args.model == 'fastfcn':
         model = FCN(len(MiniCity.validClasses), backbone='resnet50')
+    elif args.model == "linknet":
+        model = LinkNet34(len(MiniCity.validClasses))
 
     # Define loss, optimizer and scheduler
     criterion = nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass)
