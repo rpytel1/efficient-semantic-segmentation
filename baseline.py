@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torchvision.transforms.functional as TF
+import albumentations as albu
 
 import time
 import os
@@ -107,6 +108,14 @@ parser.add_argument('--output_dir', metavar='baseline_run',
 parser.add_argument('--window', metavar='window_function',
                     default='', type=str,
                     help='Windowing function [hamming, blackman, kaiser].')
+
+parser.add_argument('--cutout', metavar='cutout',
+                    default=0, type=float,
+                    help='Cutout probability')
+
+parser.add_argument('--weather', metavar='weather',
+                    default=0, type=float,
+                    help='Weather augment probability')
 
 """
 ===========
@@ -576,17 +585,32 @@ def train_trans(image, mask):
     image = TF.adjust_contrast(image, cf)
     image = TF.adjust_saturation(image, sf)
     image = TF.adjust_hue(image, hf)
-
-    # From PIL to Tensor
+     
+    np_image = np.array(image)
+    np_mask = np.array(mask)
+    
+    augment= albu.Compose([albu.Cutout(p=args.cutout),albu.OneOf([albu.RandomRain(p=1, brightness_coefficient=0.9, drop_width=1, blur_value=5),
+                                    albu.RandomSnow(p=1, brightness_coeff=2.5, snow_point_lower=0.3,
+                                                    snow_point_upper=0.5),
+                                    albu.RandomSunFlare(p=1, flare_roi=(0, 0, 1, 0.5), angle_lower=0.5),
+                                    albu.RandomShadow(p=1, num_shadows_lower=1, num_shadows_upper=1,
+                                                      shadow_dimension=5, shadow_roi=(0, 0.5, 1, 1))], p=args.weather)])(
+        image=np_image, mask=np_mask)
+    
+    image = Image.fromarray(augment['image'])
+    mask = Image.fromarray(augment['mask'])
+    
     image = TF.to_tensor(image)
-
+    
+    
     # Normalize
     image = TF.normalize(image, args.dataset_mean, args.dataset_std)
 
     # Convert ids to train_ids
     mask = np.array(mask, np.uint8)  # PIL Image to numpy array
     mask = torch.from_numpy(mask)  # Numpy array to tensor
-
+    
+    
     return image, mask
 
 
