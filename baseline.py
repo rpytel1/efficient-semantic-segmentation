@@ -31,6 +31,7 @@ from models.LinkNet.linknet import LinkNet34
 from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix
+from semi_supervised.cutmix_progressive_sprinkles import  apply_cutmix_sprinkles
 from semi_supervised.cowmix import apply_cowmix
 from utils.dice_loss import DiceLoss
 from utils.losses import get_class_weights
@@ -116,6 +117,10 @@ parser.add_argument('--cutout', metavar='cutout',
 parser.add_argument('--weather', metavar='weather',
                     default=0, type=float,
                     help='Weather augment probability')
+
+parser.add_argument('--cutmix_sprink_prob', metavar='cutmix_sprink_prob',
+                    default=0, type=float,
+                    help='Cutmix sprink probability')
 
 """
 ===========
@@ -357,6 +362,10 @@ def train_epoch(dataloader, model, criterion, optimizer, lr_scheduler, epoch, vo
             r = random.random()
             if args.beta > 0 and r < args.cutmix_prob:
                 inputs, labels = apply_cutmix(inputs, labels, args.beta)
+            
+            r = random.random()
+            if args.beta > 0 and r < args.cutmix_sprink_prob:
+                inputs, labels = apply_cutmix_sprinkles(inputs, labels, args.beta)
 
             if args.cowmix_prob > 0:
                 inputs, labels = apply_cowmix(inputs, labels, args.cowmix_prob)
