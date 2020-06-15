@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy import special
+import random
 
 
 def apply_cowmix(last_input, last_target, prob=0.5):
@@ -23,8 +24,8 @@ def apply_cowmix(last_input, last_target, prob=0.5):
 
 
 def generate_mask(shape, prob):
-    # TODO Sigma we need to sample from unifrom distribution between sigma_min-sigma_max (see source paper).
-    sigma = 5
+    sigmas = list(range(2, 65))
+    sigma = random.choice(sigmas)
     noise = random_noise(shape - 1)
     convolved = gaussian_filter(noise, sigma=sigma)
 

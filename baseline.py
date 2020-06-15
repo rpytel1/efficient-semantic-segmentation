@@ -93,6 +93,10 @@ parser.add_argument('--beta', metavar='0',
 
 parser.add_argument('--cowmix_prob', metavar='0',
                     default=0, type=float,
+                    help='Probability of applying cowmix.')
+
+parser.add_argument('--cowmix_frac', metavar='0',
+                    default=0, type=float,
                     help='Fraction of pixels to cut for cowmix.')
 
 parser.add_argument('--loss', metavar='cel',
@@ -367,8 +371,9 @@ def train_epoch(dataloader, model, criterion, optimizer, lr_scheduler, epoch, vo
             if args.beta > 0 and r < args.cutmix_sprink_prob:
                 inputs, labels = apply_cutmix_sprinkles(inputs, labels, args.beta)
 
-            if args.cowmix_prob > 0:
-                inputs, labels = apply_cowmix(inputs, labels, args.cowmix_prob)
+            r = random.random()
+            if args.cowmix_frac > 0 and r < args.cowmix_prob:
+                inputs, labels = apply_cowmix(inputs, labels, args.cowmix_frac)
 
             # forward pass
             outputs = model(inputs)
