@@ -27,6 +27,7 @@ from models.UNet.unet_baseline import UNet
 from models.Tiramisu.tiramisu import FCDenseNet
 from models.FastFCN.FastFCN import FCN
 from models.LinkNet.linknet import LinkNet34
+from models.NestedUNet.nestedUnet import NestedUNet
 
 from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
@@ -184,7 +185,9 @@ def main():
         model = FCN(len(MiniCity.validClasses), backbone='resnet50')
     elif args.model == "linknet":
         model = LinkNet34(len(MiniCity.validClasses))
-
+    elif args.model == "nested_unet":
+        model = NestedUNet(len(MiniCity.validClasses))
+    
     # Define loss, optimizer and scheduler
     criterion = nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass)
     if args.loss == "lovasz":
