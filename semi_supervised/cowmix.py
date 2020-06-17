@@ -24,7 +24,7 @@ def apply_cowmix(last_input, last_target, prob=0.5):
 
 
 def generate_mask(shape, prob):
-    sigmas = list(range(2, 65))
+    sigmas = list(range(8, 33))
     sigma = random.choice(sigmas)
     noise = random_noise(shape - 1)
     convolved = gaussian_filter(noise, sigma=sigma)
