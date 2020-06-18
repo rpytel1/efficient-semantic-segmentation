@@ -33,7 +33,7 @@ from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix
 from semi_supervised.cutmix_progressive_sprinkles import  apply_cutmix_sprinkles
-from semi_supervised.cowmix import apply_cowmix
+from semi_supervised.cowmix import apply_cowmix, apply_cowout
 from utils.dice_loss import DiceLoss
 from utils.losses import get_class_weights
 from utils.lovasz_loss import LovaszLoss
@@ -91,6 +91,14 @@ parser.add_argument('--cutmix_prob', metavar='0',
 parser.add_argument('--beta', metavar='0',
                     default=0, type=float,
                     help='beta_probability')
+
+parser.add_argument('--cowout_prob', metavar='0',
+                    default=0, type=float,
+                    help='Probability of applying cowmix.')
+
+parser.add_argument('--cowout_frac', metavar='0',
+                    default=0, type=float,
+                    help='Fraction of pixels to cut for cowmix.')
 
 parser.add_argument('--cowmix_prob', metavar='0',
                     default=0, type=float,
@@ -377,6 +385,10 @@ def train_epoch(dataloader, model, criterion, optimizer, lr_scheduler, epoch, vo
             r = random.random()
             if args.cowmix_frac > 0 and r < args.cowmix_prob:
                 inputs, labels = apply_cowmix(inputs, labels, args.cowmix_frac)
+
+            r = random.random()
+            if args.cowout_frac > 0 and r < args.cowout_prob:
+                inputs, labels = apply_cowout(inputs, labels, args.cowout_frac)
 
             # forward pass
             outputs = model(inputs)

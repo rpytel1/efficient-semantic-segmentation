@@ -23,6 +23,17 @@ def apply_cowmix(last_input, last_target, prob=0.5):
     return new_input, new_target
 
 
+def apply_cowout(last_input, last_target, prob=0.5):
+    shape = np.array(last_target.shape)[1:]
+
+    mask, mask_inv = generate_mask(shape, prob)
+    mask = torch.tensor(mask).cuda()
+
+    new_input = last_input * mask
+    new_target = last_target * mask
+
+    return new_input, new_target
+
 def generate_mask(shape, prob):
     sigmas = list(range(8, 33))
     sigma = random.choice(sigmas)
