@@ -32,8 +32,9 @@ from models.NestedUNet.nestedUnet import NestedUNet
 from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix
-from semi_supervised.cutmix_progressive_sprinkles import  apply_cutmix_sprinkles
-from semi_supervised.cowmix import apply_cowmix, apply_cowout
+from semi_supervised.cutmix_progressive_sprinkles import apply_cutmix_sprinkles
+from semi_supervised.cowmix import apply_cowmix
+from utils.combined_loss import CombinedLoss
 from utils.dice_loss import DiceLoss
 from utils.losses import get_class_weights
 from utils.lovasz_loss import LovaszLoss
@@ -195,16 +196,24 @@ def main():
         model = LinkNet34(len(MiniCity.validClasses))
     elif args.model == "nested_unet":
         model = NestedUNet(len(MiniCity.validClasses))
-    
+
     # Define loss, optimizer and scheduler
     criterion = nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass)
     if args.loss == "lovasz":
         criterion = LovaszLoss(ignore_index=MiniCity.voidClass)
     elif args.loss == "dice":
         criterion = DiceLoss()
-    elif args.loss == "weighted":
-        # TODO: Need fixing as indexes changed
-        criterion = nn.CrossEntropyLoss(weight=get_class_weights(), ignore_index=MiniCity.voidClass)
+    elif args.loss == "combined_ce_l":
+        criterion = CombinedLoss(
+            losses=[nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass), LovaszLoss(ignore_index=MiniCity.voidClass)],
+            coeficients=[0.7, 0.3])
+    elif args.loss == "combined_ce_d":
+        criterion = CombinedLoss(losses=[nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass), DiceLoss()],
+                                 coeficients=[0.7, 0.3])
+    elif args.loss == "combined_ce_d_l":
+        criterion = CombinedLoss(losses=[nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass), DiceLoss(),
+                                         LovaszLoss(ignore_index=MiniCity.voidClass)],
+                                 coeficients=[0.6, 0.2, 0.2])
 
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr_init,
                                 momentum=args.lr_momentum,
@@ -377,7 +386,7 @@ def train_epoch(dataloader, model, criterion, optimizer, lr_scheduler, epoch, vo
             r = random.random()
             if args.beta > 0 and r < args.cutmix_prob:
                 inputs, labels = apply_cutmix(inputs, labels, args.beta)
-            
+
             r = random.random()
             if args.beta > 0 and r < args.cutmix_sprink_prob:
                 inputs, labels = apply_cutmix_sprinkles(inputs, labels, args.beta)
@@ -614,32 +623,32 @@ def train_trans(image, mask):
     image = TF.adjust_contrast(image, cf)
     image = TF.adjust_saturation(image, sf)
     image = TF.adjust_hue(image, hf)
-     
+
     np_image = np.array(image)
     np_mask = np.array(mask)
-    
-    augment= albu.Compose([albu.Cutout(p=args.cutout),albu.OneOf([albu.RandomRain(p=1, brightness_coefficient=0.9, drop_width=1, blur_value=5),
-                                    albu.RandomSnow(p=1, brightness_coeff=2.5, snow_point_lower=0.3,
-                                                    snow_point_upper=0.5),
-                                    albu.RandomSunFlare(p=1, flare_roi=(0, 0, 1, 0.5), angle_lower=0.5),
-                                    albu.RandomShadow(p=1, num_shadows_lower=1, num_shadows_upper=1,
-                                                      shadow_dimension=5, shadow_roi=(0, 0.5, 1, 1))], p=args.weather)])(
+
+    augment = albu.Compose([albu.Cutout(p=args.cutout),
+                            albu.OneOf([albu.RandomRain(p=1, brightness_coefficient=0.9, drop_width=1, blur_value=5),
+                                        albu.RandomSnow(p=1, brightness_coeff=2.5, snow_point_lower=0.3,
+                                                        snow_point_upper=0.5),
+                                        albu.RandomSunFlare(p=1, flare_roi=(0, 0, 1, 0.5), angle_lower=0.5),
+                                        albu.RandomShadow(p=1, num_shadows_lower=1, num_shadows_upper=1,
+                                                          shadow_dimension=5, shadow_roi=(0, 0.5, 1, 1))],
+                                       p=args.weather)])(
         image=np_image, mask=np_mask)
-    
+
     image = Image.fromarray(augment['image'])
     mask = Image.fromarray(augment['mask'])
-    
+
     image = TF.to_tensor(image)
-    
-    
+
     # Normalize
     image = TF.normalize(image, args.dataset_mean, args.dataset_std)
 
     # Convert ids to train_ids
     mask = np.array(mask, np.uint8)  # PIL Image to numpy array
     mask = torch.from_numpy(mask)  # Numpy array to tensor
-    
-    
+
     return image, mask
 
 
