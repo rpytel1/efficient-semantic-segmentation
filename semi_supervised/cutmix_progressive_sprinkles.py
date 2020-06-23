@@ -20,6 +20,23 @@ def apply_cutmix_sprinkles(last_input, last_target, beta, num_holes = 8):
     return new_input, new_target
 
 
+def apply_sprinkles(last_input, last_target, beta, num_holes = 8):
+    new_input = last_input
+    new_target = last_target
+
+    for i in range(num_holes):
+        λ = np.random.beta(beta, beta)
+        λ = max(λ, 1 - λ) * 0.16
+        shuffle = torch.randperm(new_target.size(0)).to(new_input.device)
+        # Get new input
+        bbx1, bby1, bbx2, bby2 = rand_bbox(last_input.size(), λ)
+        new_input = new_input.clone()
+        new_input[:, ..., bby1:bby2, bbx1:bbx2] = 0
+        new_target = new_target.clone()
+        new_target[:, ..., bby1:bby2, bbx1:bbx2] = 17
+    return new_input, new_target
+
+
 def rand_bbox(last_input_size, λ):
     '''lambd is always between .5 and 1'''
 

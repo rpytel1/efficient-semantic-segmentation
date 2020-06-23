@@ -31,9 +31,9 @@ from models.NestedUNet.nestedUnet import NestedUNet
 
 from helpers.minicity import MiniCity
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
-from semi_supervised.cutmix import apply_cutmix
-from semi_supervised.cutmix_progressive_sprinkles import apply_cutmix_sprinkles
-from semi_supervised.cowmix import apply_cowmix
+from semi_supervised.cutmix import apply_cutmix, apply_cutout
+from semi_supervised.cutmix_progressive_sprinkles import apply_cutmix_sprinkles, apply_sprinkles
+from semi_supervised.cowmix import apply_cowmix, apply_cowout
 from utils.combined_loss import CombinedLoss
 from utils.dice_loss import DiceLoss
 from utils.losses import get_class_weights
@@ -135,6 +135,14 @@ parser.add_argument('--weather', metavar='weather',
 parser.add_argument('--cutmix_sprink_prob', metavar='cutmix_sprink_prob',
                     default=0, type=float,
                     help='Cutmix sprink probability')
+
+parser.add_argument('--sprinkl', metavar='sprinkl',
+                    default=0, type=float,
+                    help='sprink probability')
+
+parser.add_argument('--combined', metavar='combined',
+                    default=0, type=float,
+                    help='Combined probability')
 
 """
 ===========
@@ -390,6 +398,13 @@ def train_epoch(dataloader, model, criterion, optimizer, lr_scheduler, epoch, vo
             r = random.random()
             if args.beta > 0 and r < args.cutmix_sprink_prob:
                 inputs, labels = apply_cutmix_sprinkles(inputs, labels, args.beta)
+                
+            if args.beta > 0 and r < args.sprinkl:
+                inputs, labels = apply_sprinkles(inputs, labels, args.beta)
+                
+            r = random.random()
+            if args.beta > 0 and r < args.cutout:
+                inputs, labels = apply_cutout(inputs, labels, args.beta)
 
             r = random.random()
             if args.cowmix_frac > 0 and r < args.cowmix_prob:
@@ -398,6 +413,18 @@ def train_epoch(dataloader, model, criterion, optimizer, lr_scheduler, epoch, vo
             r = random.random()
             if args.cowout_frac > 0 and r < args.cowout_prob:
                 inputs, labels = apply_cowout(inputs, labels, args.cowout_frac)
+            
+            r = random.random()
+            if r < args.combined:
+                r = random.random()
+                if r < 0.33:
+                    inputs, labels = apply_cutmix(inputs, labels, 2.0)
+                elif r < 0.66:
+                    inputs, labels = apply_cowmix(inputs, labels, 0.2)
+                else:
+                    inputs, labels = apply_sprinkles(inputs, labels, 1.0)
+
+                    
 
             # forward pass
             outputs = model(inputs)
@@ -627,8 +654,7 @@ def train_trans(image, mask):
     np_image = np.array(image)
     np_mask = np.array(mask)
 
-    augment = albu.Compose([albu.Cutout(p=args.cutout),
-                            albu.OneOf([albu.RandomRain(p=1, brightness_coefficient=0.9, drop_width=1, blur_value=5),
+    augment = albu.Compose([albu.OneOf([albu.RandomRain(p=1, brightness_coefficient=0.9, drop_width=1, blur_value=5),
                                         albu.RandomSnow(p=1, brightness_coeff=2.5, snow_point_lower=0.3,
                                                         snow_point_upper=0.5),
                                         albu.RandomSunFlare(p=1, flare_roi=(0, 0, 1, 0.5), angle_lower=0.5),

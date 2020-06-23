@@ -3,7 +3,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 from scipy import special
 import random
-
+ 
 
 def apply_cowmix(last_input, last_target, prob=0.5):
     shuffle = torch.randperm(last_target.size(0)).to(last_input.device)
@@ -28,10 +28,10 @@ def apply_cowout(last_input, last_target, prob=0.5):
 
     mask, mask_inv = generate_mask(shape, prob)
     mask = torch.tensor(mask).cuda()
-
+    mask_inv = torch.tensor(mask_inv).cuda()
     new_input = last_input * mask
-    new_target = last_target * mask
-
+    new_target = last_target * mask + 17 *mask_inv
+    
     return new_input, new_target
 
 def generate_mask(shape, prob):
