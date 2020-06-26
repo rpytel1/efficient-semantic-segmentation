@@ -30,6 +30,7 @@ from models.LinkNet.linknet import LinkNet34
 from models.NestedUNet.nestedUnet import NestedUNet
 
 from helpers.minicity import MiniCity
+from helpers.CamVid import CamVid
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix, apply_cutout
 from semi_supervised.cutmix_progressive_sprinkles import apply_cutmix_sprinkles, apply_sprinkles
@@ -144,6 +145,10 @@ parser.add_argument('--combined', metavar='combined',
                     default=0, type=float,
                     help='Combined probability')
 
+parser.add_argument('--dataset', metavar='minicity',
+                    default='minicity', type=str,
+                    help='Dataset to train with.')
+
 """
 ===========
 Main method
@@ -178,9 +183,16 @@ def main():
         os.makedirs(args.output_dir + '/results_color')
 
     # Load dataset
-    trainset = MiniCity(args.dataset_path, split='train', transforms=train_trans)
-    valset = MiniCity(args.dataset_path, split='val', transforms=test_trans)
-    testset = MiniCity(args.dataset_path, split='test', transforms=test_trans)
+    if args.dataset == "minicity":
+        trainset = MiniCity(args.dataset_path, split='train', transforms=train_trans)
+        valset = MiniCity(args.dataset_path, split='val', transforms=test_trans)
+        testset = MiniCity(args.dataset_path, split='test', transforms=test_trans)
+
+    elif args.dataset =="camvid":
+        trainset = CamVid(args.dataset_path, mode='train', transforms=train_trans)
+        valset = CamVid(args.dataset_path, mode='val', transforms=test_trans)
+        testset = CamVid(args.dataset_path, mode='test', transforms=test_trans)
+
     dataloaders = {}
     dataloaders['train'] = torch.utils.data.DataLoader(trainset,
                                                        batch_size=args.batch_size, shuffle=True,
@@ -274,22 +286,35 @@ def main():
 
         # Train
         print('--- Training ---')
-        train_loss, train_acc = train_epoch(dataloaders['train'], model,
-                                            criterion, optimizer, scheduler,
-                                            epoch, void=MiniCity.voidClass)
+        if args.dataset == "minicity":
+            train_loss, train_acc = train_epoch(dataloaders['train'], model,
+                                                criterion, optimizer, scheduler,
+                                                epoch, void=MiniCity.voidClass)
+        elif args.dataset == "camvid":
+            train_loss, train_acc = train_epoch(dataloaders['train'], model,
+                                                criterion, optimizer, scheduler,
+                                                epoch)
+
         metrics['train_loss'].append(train_loss)
         metrics['train_acc'].append(train_acc)
         print('Epoch {} train loss: {:.4f}, acc: {:.4f}'.format(epoch, train_loss, train_acc))
 
         # Validate
         print('--- Validation ---')
-        val_acc, val_loss, miou = validate_epoch(dataloaders['val'],
-                                                 model,
-                                                 criterion, epoch,
-                                                 MiniCity.classLabels,
-                                                 MiniCity.validClasses,
-                                                 void=MiniCity.voidClass,
-                                                 maskColors=MiniCity.mask_colors)
+        if args.dataset == "minicity":
+            val_acc, val_loss, miou = validate_epoch(dataloaders['val'],
+                                                     model,
+                                                     criterion, epoch,
+                                                     MiniCity.classLabels,
+                                                     MiniCity.validClasses,
+                                                     void=MiniCity.voidClass,
+                                                     maskColors=MiniCity.mask_colors)
+        elif args.dataset == "camvid":
+            val_acc, val_loss, miou = validate_epoch(dataloaders['val'],
+                                                     model,
+                                                     criterion, epoch,
+                                                     CamVid.classLabels,
+                                                     CamVid.validClasses)
         metrics['val_acc'].append(val_acc)
         metrics['val_loss'].append(val_loss)
         metrics['miou'].append(miou)
