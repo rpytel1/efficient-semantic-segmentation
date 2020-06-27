@@ -205,20 +205,30 @@ def main():
                                                       pin_memory=args.pin_memory, num_workers=args.num_workers)
 
     # Load model
+    validClasses = 0
+    if args.dataset == "minicity":
+        validClasses = len(MiniCity.validClasses)
+    elif args.dataset == "camvid":
+        validClasses = len(CamVid.validClasses)
+
     model = None
     if args.model == 'unet':
-        model = UNet(len(MiniCity.validClasses), batchnorm=True, window=args.window)
+        model = UNet(validClasses, batchnorm=True, window=args.window)
     elif args.model == 'tiramisu':
-        model = FCDenseNet(len(MiniCity.validClasses))
+        model = FCDenseNet(validClasses)
     elif args.model == 'fastfcn':
-        model = FCN(len(MiniCity.validClasses), backbone='resnet50')
+        model = FCN(validClasses, backbone='resnet50')
     elif args.model == "linknet":
-        model = LinkNet34(len(MiniCity.validClasses))
+        model = LinkNet34(validClasses)
     elif args.model == "nested_unet":
-        model = NestedUNet(len(MiniCity.validClasses))
+        model = NestedUNet(validClasses)
 
     # Define loss, optimizer and scheduler
-    criterion = nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass)
+    if args.dataset == "minicity":
+        criterion = nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass)
+    elif args.dataset == "camvid":
+        criterion = nn.CrossEntropyLoss(ignore_index=CamVid.voidClass)
+
     if args.loss == "lovasz":
         criterion = LovaszLoss(ignore_index=MiniCity.voidClass)
     elif args.loss == "dice":
@@ -293,7 +303,7 @@ def main():
         elif args.dataset == "camvid":
             train_loss, train_acc = train_epoch(dataloaders['train'], model,
                                                 criterion, optimizer, scheduler,
-                                                epoch)
+                                                epoch, void=CamVid.voidClass)
 
         metrics['train_loss'].append(train_loss)
         metrics['train_acc'].append(train_acc)
@@ -314,7 +324,8 @@ def main():
                                                      model,
                                                      criterion, epoch,
                                                      CamVid.classLabels,
-                                                     CamVid.validClasses)
+                                                     CamVid.validClasses,
+                                                     void=CamVid.voidClass)
         metrics['val_acc'].append(val_acc)
         metrics['val_loss'].append(val_loss)
         metrics['miou'].append(miou)
@@ -374,7 +385,10 @@ def main():
         os.makedirs('results')
     # Run prediction on validation set
     # For predicting on test set, simple replace 'val' by 'test'
-    predict(dataloaders['val'], model, MiniCity.mask_colors)
+    if args.dataset == "minicity":
+        predict(dataloaders['val'], model, MiniCity.mask_colors)
+    elif args.dataset == "camvid":
+        predict(dataloaders['val'], model, CamVid.mask_colors)
 
 
 """
