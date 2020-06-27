@@ -30,6 +30,7 @@ from models.LinkNet.linknet import LinkNet34
 from models.NestedUNet.nestedUnet import NestedUNet
 
 from helpers.minicity import MiniCity
+from helpers.camvid import CamVid
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix, apply_cutout
 from semi_supervised.cutmix_progressive_sprinkles import apply_cutmix_sprinkles, apply_sprinkles
@@ -144,6 +145,10 @@ parser.add_argument('--combined', metavar='combined',
                     default=0, type=float,
                     help='Combined probability')
 
+parser.add_argument('--dataset', metavar='minicity',
+                    default='minicity', type=str,
+                    help='Dataset to train with.')
+
 """
 ===========
 Main method
@@ -178,9 +183,16 @@ def main():
         os.makedirs(args.output_dir + '/results_color')
 
     # Load dataset
-    trainset = MiniCity(args.dataset_path, split='train', transforms=train_trans)
-    valset = MiniCity(args.dataset_path, split='val', transforms=test_trans)
-    testset = MiniCity(args.dataset_path, split='test', transforms=test_trans)
+    if args.dataset == "minicity":
+        trainset = MiniCity(args.dataset_path, split='train', transforms=train_trans)
+        valset = MiniCity(args.dataset_path, split='val', transforms=test_trans)
+        testset = MiniCity(args.dataset_path, split='test', transforms=test_trans)
+
+    elif args.dataset =="camvid":
+        trainset = CamVid(args.dataset_path, mode='train', transforms=train_trans)
+        valset = CamVid(args.dataset_path, mode='val', transforms=test_trans)
+        testset = CamVid(args.dataset_path, mode='test', transforms=test_trans)
+
     dataloaders = {}
     dataloaders['train'] = torch.utils.data.DataLoader(trainset,
                                                        batch_size=args.batch_size, shuffle=True,
@@ -193,20 +205,30 @@ def main():
                                                       pin_memory=args.pin_memory, num_workers=args.num_workers)
 
     # Load model
+    validClasses = 0
+    if args.dataset == "minicity":
+        validClasses = len(MiniCity.validClasses)
+    elif args.dataset == "camvid":
+        validClasses = len(CamVid.validClasses)
+
     model = None
     if args.model == 'unet':
-        model = UNet(len(MiniCity.validClasses), batchnorm=True, window=args.window)
+        model = UNet(validClasses, batchnorm=True, window=args.window)
     elif args.model == 'tiramisu':
-        model = FCDenseNet(len(MiniCity.validClasses))
+        model = FCDenseNet(validClasses)
     elif args.model == 'fastfcn':
-        model = FCN(len(MiniCity.validClasses), backbone='resnet50')
+        model = FCN(validClasses, backbone='resnet50')
     elif args.model == "linknet":
-        model = LinkNet34(len(MiniCity.validClasses))
+        model = LinkNet34(validClasses)
     elif args.model == "nested_unet":
-        model = NestedUNet(len(MiniCity.validClasses))
+        model = NestedUNet(validClasses)
 
     # Define loss, optimizer and scheduler
-    criterion = nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass)
+    if args.dataset == "minicity":
+        criterion = nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass)
+    elif args.dataset == "camvid":
+        criterion = nn.CrossEntropyLoss(ignore_index=CamVid.voidClass)
+
     if args.loss == "lovasz":
         criterion = LovaszLoss(ignore_index=MiniCity.voidClass)
     elif args.loss == "dice":
@@ -261,7 +283,12 @@ def main():
         # Create results directory
         if not os.path.isdir('results'):
             os.makedirs('results')
-        predict(dataloaders['test'], model, MiniCity.mask_colors)
+
+        if args.dataset == "minicity":
+            predict(dataloaders['test'], model, MiniCity.mask_colors)
+        elif args.dataset == "camvid":
+            predict(dataloaders['test'], model, CamVid.mask_colors)
+
         return
 
     # Generate log file
@@ -274,22 +301,36 @@ def main():
 
         # Train
         print('--- Training ---')
-        train_loss, train_acc = train_epoch(dataloaders['train'], model,
-                                            criterion, optimizer, scheduler,
-                                            epoch, void=MiniCity.voidClass)
+        if args.dataset == "minicity":
+            train_loss, train_acc = train_epoch(dataloaders['train'], model,
+                                                criterion, optimizer, scheduler,
+                                                epoch, void=MiniCity.voidClass)
+        elif args.dataset == "camvid":
+            train_loss, train_acc = train_epoch(dataloaders['train'], model,
+                                                criterion, optimizer, scheduler,
+                                                epoch, void=CamVid.voidClass)
+
         metrics['train_loss'].append(train_loss)
         metrics['train_acc'].append(train_acc)
         print('Epoch {} train loss: {:.4f}, acc: {:.4f}'.format(epoch, train_loss, train_acc))
 
         # Validate
         print('--- Validation ---')
-        val_acc, val_loss, miou = validate_epoch(dataloaders['val'],
-                                                 model,
-                                                 criterion, epoch,
-                                                 MiniCity.classLabels,
-                                                 MiniCity.validClasses,
-                                                 void=MiniCity.voidClass,
-                                                 maskColors=MiniCity.mask_colors)
+        if args.dataset == "minicity":
+            val_acc, val_loss, miou = validate_epoch(dataloaders['val'],
+                                                     model,
+                                                     criterion, epoch,
+                                                     MiniCity.classLabels,
+                                                     MiniCity.validClasses,
+                                                     void=MiniCity.voidClass,
+                                                     maskColors=MiniCity.mask_colors)
+        elif args.dataset == "camvid":
+            val_acc, val_loss, miou = validate_epoch(dataloaders['val'],
+                                                     model,
+                                                     criterion, epoch,
+                                                     CamVid.classLabels,
+                                                     CamVid.validClasses,
+                                                     void=CamVid.voidClass)
         metrics['val_acc'].append(val_acc)
         metrics['val_loss'].append(val_loss)
         metrics['miou'].append(miou)
@@ -349,7 +390,10 @@ def main():
         os.makedirs('results')
     # Run prediction on validation set
     # For predicting on test set, simple replace 'val' by 'test'
-    predict(dataloaders['val'], model, MiniCity.mask_colors)
+    if args.dataset == "minicity":
+        predict(dataloaders['val'], model, MiniCity.mask_colors)
+    elif args.dataset == "camvid":
+        predict(dataloaders['val'], model, CamVid.mask_colors)
 
 
 """
@@ -570,10 +614,14 @@ def predict(dataloader, model, maskColors):
                 pred_color = Image.fromarray(pred_color.astype('uint8'))
                 pred_color.save('{}/results_color/{}_prediction.png'.format(args.output_dir, filename))
                 # Save class id prediction (used for evaluation)
-                pred_id = MiniCity.trainid2id[pred]
-                pred_id = Image.fromarray(pred_id)
-                pred_id = pred_id.resize((2048, 1024), resample=Image.NEAREST)
-                pred_id.save('results/{}.png'.format(filename))
+                if args.dataset == "minicity":
+                    pred_id = MiniCity.trainid2id[pred]
+                    pred_id = Image.fromarray(pred_id)
+                    pred_id = pred_id.resize((2048, 1024), resample=Image.NEAREST)
+                    pred_id.save('results/{}.png'.format(filename))
+                if args.dataset == "camvid":
+                    pred_id = Image.fromarray(np.array(pred.numpy(), dtype=np.uint8))
+                    pred_id.save('results/{}.png'.format(filename))
 
             # measure elapsed time
             batch_time.update(time.time() - end)

@@ -3,9 +3,10 @@
 """
 Created on Mon Mar  9 16:35:54 2020 by Attila Lengyel - attila@lengyel.nl
 """
-
+import os
 import sys
 import numpy as np
+from PIL import Image
 
 """
 Classes for logging and progress printing.
@@ -194,3 +195,61 @@ def getScoreAverage(scoreList):
     if validScores == 0:
         return float('nan')
     return scoreSum / validScores
+
+
+def get_files(folder, name_filter=None, extension_filter=None):
+    """Helper function that returns the list of files in a specified folder
+    with a specified extension.
+    Keyword arguments:
+    - folder (``string``): The path to a folder.
+    - name_filter (```string``, optional): The returned files must contain
+    this substring in their filename. Default: None; files are not filtered.
+    - extension_filter (``string``, optional): The desired file extension.
+    Default: None; files are not filtered
+    """
+    if not os.path.isdir(folder):
+        raise RuntimeError("\"{0}\" is not a folder.".format(folder))
+
+    # Filename filter: if not specified don't filter (condition always true);
+    # otherwise, use a lambda expression to filter out files that do not
+    # contain "name_filter"
+    if name_filter is None:
+        # This looks hackish...there is probably a better way
+        name_cond = lambda filename: True
+    else:
+        name_cond = lambda filename: name_filter in filename
+
+    # Extension filter: if not specified don't filter (condition always true);
+    # otherwise, use a lambda expression to filter out files whose extension
+    # is not "extension_filter"
+    if extension_filter is None:
+        # This looks hackish...there is probably a better way
+        ext_cond = lambda filename: True
+    else:
+        ext_cond = lambda filename: filename.endswith(extension_filter)
+
+    filtered_files = []
+
+    # Explore the directory tree to get files that contain "name_filter" and
+    # with extension "extension_filter"
+    for path, _, files in os.walk(folder):
+        files.sort()
+        for file in files:
+            if name_cond(file) and ext_cond(file):
+                full_path = os.path.join(path, file)
+                filtered_files.append(full_path)
+
+    return filtered_files
+
+
+def pil_loader(data_path, label_path):
+    """Loads a sample and label image given their path as PIL images.
+    Keyword arguments:
+    - data_path (``string``): The filepath to the image.
+    - label_path (``string``): The filepath to the ground-truth image.
+    Returns the image and the label as PIL images.
+    """
+    data = Image.open(data_path)
+    label = Image.open(label_path)
+
+    return data, label
