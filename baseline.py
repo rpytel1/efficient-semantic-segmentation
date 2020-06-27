@@ -31,6 +31,7 @@ from models.NestedUNet.nestedUnet import NestedUNet
 
 from helpers.minicity import MiniCity
 from helpers.camvid import CamVid
+from helpers.own_cityscapes import OwnCityscapes
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix, apply_cutout
 from semi_supervised.cutmix_progressive_sprinkles import apply_cutmix_sprinkles, apply_sprinkles
@@ -193,6 +194,11 @@ def main():
         valset = CamVid(args.dataset_path, mode='val', transforms=test_trans)
         testset = CamVid(args.dataset_path, mode='test', transforms=test_trans)
 
+    elif "cityscapes" in args.dataset_path:
+        trainset = OwnCityscapes(args.dataset_path, split='train', transforms=train_trans)
+        valset = OwnCityscapes(args.dataset_path, split='val', transforms=test_trans)
+        testset = OwnCityscapes(args.dataset_path, split='test', transforms=test_trans)
+
     dataloaders = {}
     dataloaders['train'] = torch.utils.data.DataLoader(trainset,
                                                        batch_size=args.batch_size, shuffle=True,
@@ -206,7 +212,7 @@ def main():
 
     # Load model
     validClasses = 0
-    if args.dataset == "minicity":
+    if args.dataset in ["minicity","cityscapes"]:
         validClasses = len(MiniCity.validClasses)
     elif args.dataset == "camvid":
         validClasses = len(CamVid.validClasses)
@@ -224,7 +230,7 @@ def main():
         model = NestedUNet(validClasses)
 
     # Define loss, optimizer and scheduler
-    if args.dataset == "minicity":
+    if args.dataset in ["minicity","cityscapes"]:
         criterion = nn.CrossEntropyLoss(ignore_index=MiniCity.voidClass)
     elif args.dataset == "camvid":
         criterion = nn.CrossEntropyLoss(ignore_index=CamVid.voidClass)
@@ -284,7 +290,7 @@ def main():
         if not os.path.isdir('results'):
             os.makedirs('results')
 
-        if args.dataset == "minicity":
+        if args.dataset in ["minicity","cityscapes"]:
             predict(dataloaders['test'], model, MiniCity.mask_colors)
         elif args.dataset == "camvid":
             predict(dataloaders['test'], model, CamVid.mask_colors)
@@ -301,7 +307,7 @@ def main():
 
         # Train
         print('--- Training ---')
-        if args.dataset == "minicity":
+        if args.dataset in ["minicity","cityscapes"]:
             train_loss, train_acc = train_epoch(dataloaders['train'], model,
                                                 criterion, optimizer, scheduler,
                                                 epoch, void=MiniCity.voidClass)
@@ -316,7 +322,7 @@ def main():
 
         # Validate
         print('--- Validation ---')
-        if args.dataset == "minicity":
+        if args.dataset in ["minicity","cityscapes"]:
             val_acc, val_loss, miou = validate_epoch(dataloaders['val'],
                                                      model,
                                                      criterion, epoch,
@@ -390,7 +396,7 @@ def main():
         os.makedirs('results')
     # Run prediction on validation set
     # For predicting on test set, simple replace 'val' by 'test'
-    if args.dataset == "minicity":
+    if args.dataset in ["minicity","cityscapes"]:
         predict(dataloaders['val'], model, MiniCity.mask_colors)
     elif args.dataset == "camvid":
         predict(dataloaders['val'], model, CamVid.mask_colors)
