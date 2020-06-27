@@ -30,7 +30,7 @@ from models.LinkNet.linknet import LinkNet34
 from models.NestedUNet.nestedUnet import NestedUNet
 
 from helpers.minicity import MiniCity
-from helpers.CamVid import CamVid
+from helpers.camvid import CamVid
 from helpers.helpers import AverageMeter, ProgressMeter, iouCalc
 from semi_supervised.cutmix import apply_cutmix, apply_cutout
 from semi_supervised.cutmix_progressive_sprinkles import apply_cutmix_sprinkles, apply_sprinkles
@@ -159,7 +159,6 @@ Main method
 def main():
     global args
     args = parser.parse_args()
-    print(args.train_size)
     args.crop_size = tuple(args.crop_size)
     args.train_size = tuple(args.train_size)
     args.test_size = tuple(args.test_size)
