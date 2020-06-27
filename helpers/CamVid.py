@@ -12,10 +12,6 @@ Label_CV = namedtuple( 'Label' , [
 
     'id'          , # An integer ID that is associated with this label.
                     # The IDs are used to represent the label in ground truth images
-                    # An ID of -1 means that this label does not have an ID and thus
-                    # is ignored when creating ground truth images (e.g. license plate).
-                    # Do not modify these IDs, since exactly these IDs are expected by the
-                    # evaluation server.
 
     'color'       , # The color of this label
     ])
@@ -58,16 +54,13 @@ labels = [
 
 
 class CamVid(data.Dataset):
-    """CamVid dataset loader where the dataset is arranged as in
-    https://github.com/alexgkendall/SegNet-Tutorial/tree/master/CamVid.
+    """CamVid dataset loader.
     Keyword arguments:
     - root_dir (``string``): Root directory path.
     - mode (``string``): The type of dataset: 'train' for training set, 'val'
     for validation set, and 'test' for test set.
-    - transform (``callable``, optional): A function/transform that  takes in
-    an PIL image and returns a transformed version. Default: None.
-    - label_transform (``callable``, optional): A function/transform that takes
-    in the target and transforms it. Default: None.
+    - transform (``callable``, optional): A function/transform that takes in
+    an PIL image and labels and returns a transformed version of both of them. Default: None.
     - loader (``callable``, optional): A function to load an image given its
     path. By default ``default_loader`` is used.
     """
@@ -174,8 +167,6 @@ class CamVid(data.Dataset):
                 img = self.transforms(img)
 
                 return img, data_path
-
-
 
     def __len__(self):
         """Returns the length of the dataset."""

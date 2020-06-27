@@ -159,6 +159,7 @@ Main method
 def main():
     global args
     args = parser.parse_args()
+    print(args.train_size)
     args.crop_size = tuple(args.crop_size)
     args.train_size = tuple(args.train_size)
     args.test_size = tuple(args.test_size)
@@ -283,7 +284,12 @@ def main():
         # Create results directory
         if not os.path.isdir('results'):
             os.makedirs('results')
-        predict(dataloaders['test'], model, MiniCity.mask_colors)
+
+        if args.dataset == "minicity":
+            predict(dataloaders['test'], model, MiniCity.mask_colors)
+        elif args.dataset == "camvid":
+            predict(dataloaders['test'], model, CamVid.mask_colors)
+
         return
 
     # Generate log file
@@ -609,10 +615,14 @@ def predict(dataloader, model, maskColors):
                 pred_color = Image.fromarray(pred_color.astype('uint8'))
                 pred_color.save('{}/results_color/{}_prediction.png'.format(args.output_dir, filename))
                 # Save class id prediction (used for evaluation)
-                pred_id = MiniCity.trainid2id[pred]
-                pred_id = Image.fromarray(pred_id)
-                pred_id = pred_id.resize((2048, 1024), resample=Image.NEAREST)
-                pred_id.save('results/{}.png'.format(filename))
+                if args.dataset == "minicity":
+                    pred_id = MiniCity.trainid2id[pred]
+                    pred_id = Image.fromarray(pred_id)
+                    pred_id = pred_id.resize((2048, 1024), resample=Image.NEAREST)
+                    pred_id.save('results/{}.png'.format(filename))
+                if args.dataset == "camvid":
+                    pred_id = Image.fromarray(np.array(pred.numpy(), dtype=np.uint8))
+                    pred_id.save('results/{}.png'.format(filename))
 
             # measure elapsed time
             batch_time.update(time.time() - end)
