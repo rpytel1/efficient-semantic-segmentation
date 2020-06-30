@@ -1,0 +1,24 @@
+.opener {
+    width:50%;
+    border-radius: 12px;
+    background-color: white;
+    border: 2px solid #e3ceab;
+    color:black;
+}
+
+.opener:hover {
+    background-color: #e3ceab;
+}
+
+#photo-selector {
+    border-radius: 12px;
+    background-color: #e3ceab;
+    border: 2px solid #e3ceab;
+    height:2em;
+}
+
+.collapse {
+    overflow: hidden;
+    border-radius: 4px;
+    transition: height 0.5s;
+}
