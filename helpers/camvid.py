@@ -93,7 +93,7 @@ class CamVid(data.Dataset):
     # Create list of class names
     classLabels = [label.name for label in labels]
 
-    voidClass = 19
+    voidClass = 0
 
     def __init__(self,
                  root_dir,

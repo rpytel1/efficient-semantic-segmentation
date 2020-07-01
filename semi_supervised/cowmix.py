@@ -23,14 +23,14 @@ def apply_cowmix(last_input, last_target, prob=0.5):
     return new_input, new_target
 
 
-def apply_cowout(last_input, last_target, prob=0.5):
+def apply_cowout(last_input, last_target, prob=0.5, ignore_class=0):
     shape = np.array(last_target.shape)[1:]
 
     mask, mask_inv = generate_mask(shape, prob)
     mask = torch.tensor(mask).cuda()
     mask_inv = torch.tensor(mask_inv).cuda()
     new_input = last_input * mask
-    new_target = last_target * mask + 17 *mask_inv
+    new_target = last_target * mask + ignore_class *mask_inv
     
     return new_input, new_target
 
