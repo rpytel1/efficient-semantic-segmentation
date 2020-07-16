@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 
-def apply_cutmix_sprinkles(last_input, last_target, beta, num_holes = 8):
+def apply_cutmix_sprinkles(last_input, last_target, beta, num_holes = 4):
     new_input = last_input
     new_target = last_target
 
